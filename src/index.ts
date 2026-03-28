@@ -13,6 +13,9 @@ if (!ACCESS_TOKEN) {
   process.exit(1);
 }
 
+const MERCHANT_ID = process.env.FLIPKART_MERCHANT_ID || "";
+const DEFAULT_LOCATION_ID = process.env.FLIPKART_LOCATION_ID || "";
+
 const client = new FlipkartClient({ accessToken: ACCESS_TOKEN });
 
 const server = new McpServer({
@@ -44,6 +47,21 @@ function formatError(error: unknown): { content: Array<{ type: "text"; text: str
   };
 }
 
+// ==================== SELLER INFO TOOL ====================
+
+server.tool(
+  "get_seller_info",
+  "Get the configured Flipkart seller account information including Merchant ID and default Location/Warehouse ID. Use this to understand which seller account the MCP server is connected to.",
+  {},
+  async () => {
+    return formatResponse({
+      merchant_id: MERCHANT_ID || "Not configured — set FLIPKART_MERCHANT_ID env var",
+      default_location_id: DEFAULT_LOCATION_ID || "Not configured — set FLIPKART_LOCATION_ID env var",
+      note: "The Merchant ID identifies the seller account. The Location ID is the default warehouse used for inventory and shipment operations.",
+    });
+  }
+);
+
 // ==================== SHIPMENT V3 TOOLS ====================
 
 server.tool(
@@ -52,7 +70,7 @@ server.tool(
   {
     type: z.enum(["preDispatch", "postDispatch", "cancelled"]).describe("Type of shipments to search"),
     states: z.array(z.string()).describe("Filter by shipment states. Required. For preDispatch use: APPROVED, PACKING_IN_PROGRESS, FORM_FAILED, PACKED, READY_TO_DISPATCH. For postDispatch use: PICKUP_COMPLETE, SHIPPED, DELIVERED, COMPLETED. For cancelled use: CANCELLED."),
-    locationId: z.string().optional().describe("Filter by location/warehouse ID"),
+    locationId: z.string().optional().describe("Filter by location/warehouse ID. If omitted, uses the default FLIPKART_LOCATION_ID from server config."),
     sku: z.array(z.string()).optional().describe("Filter by SKU IDs"),
     orderDateFrom: z.string().optional().describe("Order date range start (ISO date)"),
     orderDateTo: z.string().optional().describe("Order date range end (ISO date)"),
@@ -66,7 +84,8 @@ server.tool(
   async (params) => {
     try {
       const filter: any = { type: params.type, states: params.states };
-      if (params.locationId) filter.locationId = params.locationId;
+      const locationId = params.locationId || DEFAULT_LOCATION_ID;
+      if (locationId) filter.locationId = locationId;
       if (params.sku) filter.sku = params.sku;
       if (params.orderDateFrom || params.orderDateTo) {
         filter.orderDate = { from: params.orderDateFrom, to: params.orderDateTo };
@@ -242,11 +261,12 @@ server.tool(
   "get_handover_counts",
   "Get the count of shipments to be handed over to logistics partners (E-Kart or 3rd party vendors).",
   {
-    locationId: z.string().optional().describe("Filter by location/warehouse ID"),
+    locationId: z.string().optional().describe("Filter by location/warehouse ID. If omitted, uses the default FLIPKART_LOCATION_ID from server config."),
   },
   async (params) => {
     try {
-      const result = await client.getHandoverCounts(params.locationId);
+      const locationId = params.locationId || DEFAULT_LOCATION_ID;
+      const result = await client.getHandoverCounts(locationId || undefined);
       return formatResponse(result);
     } catch (error) {
       return formatError(error);
@@ -431,12 +451,12 @@ server.tool(
 
 server.tool(
   "update_listing_inventory",
-  "Update the inventory count for one or more listings at specified warehouse locations.",
+  "Update the inventory count for one or more listings at specified warehouse locations. Use the default FLIPKART_LOCATION_ID from server config if no specific location is provided.",
   {
     listings: z.record(z.string(), z.object({
       product_id: z.string().describe("Flipkart product ID (FSN)"),
       locations: z.array(z.object({
-        id: z.string().describe("Location/warehouse ID"),
+        id: z.string().describe("Location/warehouse ID (use FLIPKART_LOCATION_ID from get_seller_info if unsure)"),
         inventory: z.number().describe("New inventory count"),
       })),
     })).describe("Object keyed by SKU ID with inventory update details"),

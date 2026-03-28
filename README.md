@@ -15,12 +15,14 @@ This MCP server implements the following Flipkart API domains:
 - Node.js 18 or higher
 - A Flipkart Seller account with API access
 - A valid Flipkart API Access Token
+- Your Flipkart Merchant ID (found in your Seller Dashboard)
+- Your Flipkart Location/Warehouse ID (found in your Seller Dashboard under Warehouse settings)
 
 ## Installation
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/flipkart-mcp-server.git
+   git clone https://github.com/vishnu27597/flipkart-mcp-server.git
    cd flipkart-mcp-server
    ```
 
@@ -34,13 +36,26 @@ This MCP server implements the following Flipkart API domains:
    npm run build
    ```
 
-## Configuration for AI Agents
+## Environment Variables
 
-To use this MCP server with your preferred AI agent, you need to configure it to run the server and provide the required `FLIPKART_ACCESS_TOKEN` environment variable.
+The server requires the following environment variables:
+
+| Variable | Required | Description |
+|---|---|---|
+| `FLIPKART_ACCESS_TOKEN` | **Yes** | Your Flipkart Seller API access token (Bearer token) |
+| `FLIPKART_MERCHANT_ID` | Recommended | Your Flipkart Merchant/Seller ID (e.g., `0316e3916c4b4f9a`) |
+| `FLIPKART_LOCATION_ID` | Recommended | Your default warehouse/location ID (e.g., `LOC85c8f6288b2e478784e12087f39d5724`) |
+
+The **Merchant ID** identifies your seller account. The **Location ID** is used as the default warehouse for shipment filtering, handover counts, and inventory operations when no specific location is provided by the agent.
+
+## Configuration for AI Agents
 
 ### Claude Desktop
 
-Add the following to your `claude_desktop_config.json` file (typically located at `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or `%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+Add the following to your `claude_desktop_config.json` file:
+
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -49,7 +64,9 @@ Add the following to your `claude_desktop_config.json` file (typically located a
       "command": "node",
       "args": ["/absolute/path/to/flipkart-mcp-server/dist/index.js"],
       "env": {
-        "FLIPKART_ACCESS_TOKEN": "your-flipkart-access-token-here"
+        "FLIPKART_ACCESS_TOKEN": "your-flipkart-access-token",
+        "FLIPKART_MERCHANT_ID": "your-merchant-id",
+        "FLIPKART_LOCATION_ID": "your-location-id"
       }
     }
   }
@@ -61,19 +78,48 @@ Add the following to your `claude_desktop_config.json` file (typically located a
 Start Claude Code with the MCP server configured:
 
 ```bash
-FLIPKART_ACCESS_TOKEN="your-token" claude --mcp-server "node /absolute/path/to/flipkart-mcp-server/dist/index.js"
+FLIPKART_ACCESS_TOKEN="your-token" \
+FLIPKART_MERCHANT_ID="your-merchant-id" \
+FLIPKART_LOCATION_ID="your-location-id" \
+claude --mcp-server "node /absolute/path/to/flipkart-mcp-server/dist/index.js"
 ```
 
 ### Cursor
 
-1. Open Cursor Settings > Features > MCP
-2. Click "+ Add New MCP Server"
+1. Open Cursor Settings > Features > MCP.
+2. Click "+ Add New MCP Server".
 3. Name: `flipkart`
 4. Type: `command`
 5. Command: `node /absolute/path/to/flipkart-mcp-server/dist/index.js`
-6. Add the environment variable `FLIPKART_ACCESS_TOKEN` with your token.
+6. Add the following environment variables:
+   - `FLIPKART_ACCESS_TOKEN` = your access token
+   - `FLIPKART_MERCHANT_ID` = your merchant ID
+   - `FLIPKART_LOCATION_ID` = your location ID
+
+### ChatGPT (via MCP Bridge / Plugin)
+
+ChatGPT does not natively support MCP servers, but you can use an MCP-to-HTTP bridge (such as [mcp-proxy](https://github.com/nicholasgriffintn/mcp-proxy) or [supergateway](https://github.com/nicholasgriffintn/supergateway)) to expose this server as an HTTP API that ChatGPT plugins or custom GPTs can call.
+
+1. Start the MCP server with the bridge:
+   ```bash
+   FLIPKART_ACCESS_TOKEN="your-token" \
+   FLIPKART_MERCHANT_ID="your-merchant-id" \
+   FLIPKART_LOCATION_ID="your-location-id" \
+   npx supergateway --stdio "node /absolute/path/to/flipkart-mcp-server/dist/index.js"
+   ```
+2. The bridge will expose the MCP tools as HTTP endpoints that can be consumed by ChatGPT custom GPTs or any HTTP-based agent.
+
+### Windsurf / Other MCP-Compatible Agents
+
+Most MCP-compatible agents follow a similar configuration pattern. Provide:
+
+- **Command**: `node /absolute/path/to/flipkart-mcp-server/dist/index.js`
+- **Environment variables**: `FLIPKART_ACCESS_TOKEN`, `FLIPKART_MERCHANT_ID`, `FLIPKART_LOCATION_ID`
 
 ## Available Tools
+
+### Seller Info
+- `get_seller_info`: Get the configured seller account details (Merchant ID, default Location ID).
 
 ### Listings Management
 - `search_listings`: Search all seller listings with FSN and SKU.
@@ -91,11 +137,20 @@ FLIPKART_ACCESS_TOKEN="your-token" claude --mcp-server "node /absolute/path/to/f
 - `get_order_details`: Get detailed information for specific shipment IDs or order IDs.
 - `trigger_label_generation`: Generate invoice and shipping labels (marks as PACKED).
 - `download_labels_and_invoices`: Get PDF links for labels and invoices.
+- `download_labels_only`: Get only shipping label PDFs.
+- `download_invoice`: Get only invoice PDFs.
 - `mark_ready_for_dispatch`: Mark shipments as ready for logistics pickup.
 - `get_shipping_details`: Get tracking and delivery address details.
 - `cancel_order_items`: Cancel specific items in an order.
 - `get_handover_counts`: Get counts of shipments pending handover.
+- `download_manifest`: Download manifest PDF for shipments.
 - `get_returns`: Get return tracking codes and details.
+- `mark_self_ship_dispatched`: Mark self-ship orders as dispatched.
+- `update_self_ship_delivery_date`: Update delivery date for self-ship orders.
+- `update_self_ship_tracking_id`: Update tracking ID for self-ship orders.
+- `update_self_ship_delivery_attempt`: Record delivery attempt for self-ship orders.
+- `get_shipment_forms`: Get forms associated with shipments.
+- `update_form_acknowledgement`: Update acknowledgement numbers for form-failed shipments.
 
 ### Reports
 - `trigger_report`: Request the generation of a specific report type (e.g., settlement, orders).
@@ -106,13 +161,18 @@ FLIPKART_ACCESS_TOKEN="your-token" claude --mcp-server "node /absolute/path/to/f
 To run the server in development mode with auto-reloading:
 
 ```bash
-FLIPKART_ACCESS_TOKEN="your-token" npm run dev
+FLIPKART_ACCESS_TOKEN="your-token" \
+FLIPKART_MERCHANT_ID="your-merchant-id" \
+FLIPKART_LOCATION_ID="your-location-id" \
+npm run dev
 ```
 
 To run the test suite against live Flipkart APIs:
 
 ```bash
-FLIPKART_ACCESS_TOKEN="your-token" FLIPKART_LOCATION_ID="your-location-id" npm run test
+FLIPKART_ACCESS_TOKEN="your-token" \
+FLIPKART_LOCATION_ID="your-location-id" \
+npm run test
 ```
 
 ## License
