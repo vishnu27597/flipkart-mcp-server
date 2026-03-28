@@ -1,0 +1,38 @@
+{
+  "name": "flipkart-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for Flipkart Seller APIs - Manage listings, shipments, and reports via Claude, ChatGPT, and other AI agents",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "flipkart-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "tsx src/test.ts"
+  },
+  "keywords": [
+    "mcp",
+    "flipkart",
+    "seller",
+    "marketplace",
+    "ai",
+    "claude",
+    "chatgpt"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.28.0",
+    "node-fetch": "^2.7.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/node-fetch": "^2.6.13",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
